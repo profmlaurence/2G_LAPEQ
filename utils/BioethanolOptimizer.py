@@ -10,13 +10,15 @@ from sklearn.metrics import mean_squared_error,r2_score
 from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor
-# import matplotlib.pyplot as plt
-# import seaborn as sns
+from config import DATASET_DIR
 
 class BioethanolOptimizer:
     def __init__(self, dataset):
-        # self.df = pd.read_csv(data_path)
-        self.df = dataset
+        if 'current_dataset' in st.session_state:
+            self.df = st.session_state.current_dataset
+        else:
+            self.df = pd.read_csv(DATASET_DIR  /dataset)
+        # self.df = dataset
         self.models = {
             "SVM (Vinitha23)": SVR(),
             "Rede Neural": MLPRegressor(),
@@ -28,17 +30,19 @@ class BioethanolOptimizer:
         }
 
     def preparation_data(self, columns_input, columns_output):
+        
         df_cleaned = self.df.copy()
-        # st.write("Colunas do DataFrame:", df_cleaned.columns.tolist())
-        # X = df_cleaned[['C (%)', 'H \n(%)', 'L (%)', 'Acid Conc\n(%)', 'S- Time (min)', 'S- Temp (ᵒC)', 'F- Time (h)', 'F-Temp (ᵒC)']]
-        # y_glucose = df_cleaned['Glucose (g/L)']
-        # X_train, X_test, y_train, y_test = train_test_split(X, y_glucose, test_size=0.2, random_state=42)
+        
+        X = df_cleaned[['C (%)', 'H \n(%)', 'L (%)', 'Acid Conc\n(%)', 'S- Time (min)', 'S- Temp (ᵒC)', 'F- Time (h)', 'F-Temp (ᵒC)']]
+        y_glucose = df_cleaned['Glucose (g/L)']
+        X_train, X_test, y_train, y_test = train_test_split(X, y_glucose, test_size=0.2, random_state=42)
         
         X = df_cleaned[columns_input]
         Y = df_cleaned[columns_output]
 
         string_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
         X = X.drop(columns=string_cols)
+        
         # st.write(X)
         X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
         
@@ -47,7 +51,7 @@ class BioethanolOptimizer:
         X_test_scaled = scaler.transform(X_test)
 
         return X_train_scaled, X_test_scaled, y_train, y_test
-
+        
     def best_params(self, model_name, X_train, y_train):
         
         return None
@@ -133,32 +137,33 @@ class BioethanolOptimizer:
             return 0.0,0.0,0.0,None
         try:
             X_train, X_test, y_train, y_test = self.preparation_data(columns_input, columns_output)
+            
             model = self.models[model_name]
 
             print(model)
 
 
-            # st.write(f"Treinando o modelo {model_name}...")
-            # model.fit(X_train, y_train)
+            st.write(f"Treinando o modelo {model_name}...")
+            model.fit(X_train, y_train)
             
-            # y_pred = model.predict(X_test)
-            # r2 = r2_score(y_test, y_pred)
-            # mse = mean_squared_error(y_test, y_pred)
-            # quadratic_error = mse ** 0.5
-            # params = model.get_params()
-            # # st.success("Modelo treinado com sucesso! 🎯")
+            y_pred = model.predict(X_test)
+            r2 = r2_score(y_test, y_pred)
+            mse = mean_squared_error(y_test, y_pred)
+            quadratic_error = mse ** 0.5
+            params = model.get_params()
+            st.success("Modelo treinado com sucesso! 🎯")
 
-            # return r2, mse, quadratic_error, params, model
-            return None, None, None, None, None
+            return r2, mse, quadratic_error, params, model
+            # return None, None, None, None, None
             
         except Exception as e:
-            st.error(f"Erro ao treinar o modelo: {e}")
+            st.error(f"Erro ao treinar o modelo (fit_model): {e}")
             # return 0.0,0.0,0.0,None
         
         # self.graficos(model_name, model, X_test, y_test, y_pred)
 
-        return 0.0,0.0,0.0,None
-    
+        return None, None, None, None, None
+        
     def simulate_mode(self,model,columns_input,columns_output):
         
         X_train, X_test, y_train, y_test = self.preparation_data(columns_input, columns_output)

@@ -15,6 +15,8 @@ def verified_dataset():
         print(st.session_state.filename)
     
 def main():
+    verified_dataset()
+    
     if col2.button("Treinar um novo modelo", key="new_model"):
         st.session_state.menu = True
         st.divider()
@@ -27,7 +29,6 @@ def main():
         st.session_state.menu = False
         st.switch_page("pages/prediction.py")
     
-    verified_dataset()
 
 
 if __name__ == "__main__":

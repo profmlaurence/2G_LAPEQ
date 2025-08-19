@@ -38,7 +38,9 @@ def select_model(columns_input,columns_output, bioopt=None):
             model = st.selectbox("Modelos disponíveis:", bioopt.models.keys())
             with st.spinner("Treinando modelo..."):
                 time.sleep(1)
+                
                 r2, mse, qmse, params, model_train = bioopt.fit_model(model, columns_input, columns_output)
+
                 # r2, mse, qmse, real_predito, curva = bioethanol_optimizer.fit_model_optimized(model, columns_input, columns_output)
 
                 colR, colM, colRM = st.columns(3)
@@ -51,6 +53,7 @@ def select_model(columns_input,columns_output, bioopt=None):
                 
             with col2:
                 # st.markdown("### Parâmetros de treinamento")
+                # params=None
                 st.expander("Parâmetros do treinamento", expanded=False,icon="⚙️").write(params)
                 # st.write(params)
                 if st.button("Salvar treinamento", key="save_training_button",icon="💾"):

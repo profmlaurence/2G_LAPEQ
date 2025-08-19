@@ -220,6 +220,7 @@ def run_simulation():
 def main():
 # Início da página
     st.subheader("🔮 Predição de Rendimento de Bioetanol")
+    dataset = st.session_state.current_dataset
 
     if st.toggle("Dados Personalizados", False, help="Habilita a utilização de dados treinados pelo usuário"):
         col1, col2 = st.columns([2, 2])
@@ -240,7 +241,6 @@ def main():
                 )
             
         if st.button("Carregar"):
-            dataset = st.session_state.current_dataset
             # st.write(st.session_state.current_name_dataset)
             params_simulate(dataset)
     else:
