@@ -56,9 +56,15 @@ def select_model(columns_input,columns_output, bioopt=None):
                 # params=None
                 st.expander("Parâmetros do treinamento", expanded=False,icon="⚙️").write(params)
                 # st.write(params)
+                
+                padrao = st.session_state.username + time.strftime("_%Y-%m-%d-%H:%M:%S")
+
+                filename = st.text_input("Digite o nome do modelo para salvar:", f"{model}_{padrao}")
+
                 if st.button("Salvar treinamento", key="save_training_button",icon="💾"):
                     # with st.spinner("Salvando modelo..."):
-                    bioopt.save_model(model=model_train, model_name=model, columns_input=columns_input, columns_output=columns_output)
+                    bioopt.save_model(filename=filename, model=model_train, model_name=model, columns_input=columns_input, columns_output=columns_output)
+                    st.session_state.current_train = filename,model_train, columns_input, columns_output
                     st.success("Modelo salvo com sucesso",icon="📂")
 
 def main():

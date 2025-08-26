@@ -50,15 +50,15 @@ data_page = st.Page("pages/data.py", title="Seleção dos Dados", icon="📀")
 train_page = st.Page("pages/train.py", title="Treinamento", icon="🧠")
 simulation_page = st.Page("pages/simulation.py", title="Simulação", icon="📈")
 prediction_page = st.Page("pages/prediction.py", title="Previsão de Rendimento", icon="🔮")
+pred_page = st.Page("pages/pred.py", title="NEW Previsão de Rendimento", icon="♻️")
 
 if st.session_state.logged_in:
     pg = st.navigation(
-    
         {
-            "Account": [logout_page,main],
+            "Account": [main,logout_page],
             # "": [main],
             "Treinamento": [data_page,train_page, simulation_page],
-            "Previsão": [prediction_page]
+            "Previsão": [prediction_page, pred_page]
         }
     )
 else:

@@ -1,5 +1,6 @@
 import streamlit as st
 # import pages.data as dt
+from utils.utils_datas import handle_existing_dataset
 
 DATASET_DIR = 'dataset'
 DEFAULT_DATA = 'dados_salvos.csv'
@@ -8,7 +9,6 @@ col1, col2, col3, col4 = st.columns([1,2,2,1])
 
 def verified_dataset():
     if 'current_dataset' not in st.session_state:
-        from utils.utils_datas import handle_existing_dataset
         handle_existing_dataset(DEFAULT_DATA)
     
     if 'current_dataset' in st.session_state:

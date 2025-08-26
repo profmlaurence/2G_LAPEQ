@@ -11,6 +11,8 @@ from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor
 from config import DATASET_DIR
+import joblib
+import os
 
 class BioethanolOptimizer:
     def __init__(self, dataset):
@@ -18,6 +20,7 @@ class BioethanolOptimizer:
             self.df = st.session_state.current_dataset
         else:
             self.df = pd.read_csv(DATASET_DIR  /dataset)
+            st.session_state.current_dataset = self.df
         # self.df = dataset
         self.models = {
             "SVM (Vinitha23)": SVR(),
@@ -140,9 +143,6 @@ class BioethanolOptimizer:
             
             model = self.models[model_name]
 
-            print(model)
-
-
             st.write(f"Treinando o modelo {model_name}...")
             model.fit(X_train, y_train)
             
@@ -182,11 +182,54 @@ class BioethanolOptimizer:
 
         pass
 
-    def save_model(self,model, model_name, columns_input, columns_output):
-        st.session_state['model_training'] = model
-        st.session_state['model_name'] = model_name
-        st.session_state['columns_input'] = columns_input
-        st.session_state['columns_output'] = columns_output
-        # st.session_state['BioethanolOptimizer'] = self.bioethanol_optimizer
-        # st.session_state['current_name_dataset'] = self.df.name
-        pass
+    def save_model(self, filename, model, model_name, columns_input, columns_output):
+        """Saves the trained model and its metadata to a serialized file on disk."""
+
+        try:
+            # Directory to save models
+            save_dir = "trained_models"
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+
+            # Data to be saved
+            training_data = {
+                'model': model,
+                'model_name': model_name,
+                'columns_input': columns_input,
+                'columns_output': columns_output,
+            }
+
+            # Sanitize model_name for use as a filename
+            safe_filename = filename + "_" + "".join(x for x in model_name if x.isalnum() or x in "._- ").replace(" ", "_")
+            filepath = os.path.join(save_dir, f"{safe_filename}.joblib")
+
+            # Serialize and save the data to disk
+            joblib.dump(training_data, filepath)
+
+            st.success(f"Modelo '{model_name}' salvo com sucesso em: `{filepath}`")
+
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao salvar o modelo: {e}")
+    
+    def load_model(self, filepath):
+        """Loads a trained model and its metadata from a serialized file."""
+        try:
+            # Load the data from the specified file
+            training_data = joblib.load("trained_models/"+filepath)
+
+            # Extract the components
+            model = training_data['model']
+            model_name = training_data['model_name']
+            columns_input = training_data['columns_input']
+            columns_output = training_data['columns_output']
+
+            st.success(f"Modelo '{model_name}' carregado com sucesso de: `{filepath}`")
+
+            return model, model_name, columns_input, columns_output
+
+        except FileNotFoundError:
+            st.error(f"Erro: O arquivo não foi encontrado em `{filepath}`.")
+            return None, None, None, None
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao carregar o modelo: {e}")
+            return None, None, None, None

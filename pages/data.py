@@ -60,8 +60,6 @@ def save_dataset_updated():
             st.write(f"Arquivo salvo como: {name}.csv")
             # st.rerun()
         
-    
-
 def select_dataset():
     files = list_files()
     if files: 

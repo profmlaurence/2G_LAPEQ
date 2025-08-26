@@ -1,21 +1,25 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
 import utils.BioethanolOptimizer as bioopt
 # from pages.data import select_dataset
 import pages.data as data
+from pathlib import Path
+from utils.utils_datas import list_files, handle_existing_dataset, load_model
 from config import DATASET_DIR, DEFAULT_DATA
 
 FIELDS = {'input_c': 0.0, 'input_h': 0.0, 'input_l': 0.0, 'acid': 2.5, 'time': 45}
 
 
-def simulate_results(X_new):
-    """
-    Simula valores realistas para a otimização com base em:
-    - Composição química da biomassa
-    - Parâmetros do processo
-    - Relações estequiométricas teóricas
-    """
+def simulate_results_old(X_new):
+    optimizer = bioopt.BioethanolOptimizer(st.session_state.current_dataset)
+
+    scaler = StandardScaler()
+    X_new_scaled = scaler.transform(X_new)
+
+
     # Relações básicas de conversão
     glucose_base = ( (X_new['Acid Conc (%)'] * 0.5) + 
                    (X_new['S- Time (min)'] * 0.1) ) * (1 - X_new['L (%)']/100)
@@ -42,6 +46,45 @@ def simulate_results(X_new):
     simulated = {k: (round(v, 2) if isinstance(v, float) else v) for k, v in simulated.items()}
     
     return simulated
+
+def simulate_results(trained_model, X_new):
+    optimizer = bioopt.BioethanolOptimizer(st.session_state.current_dataset)
+
+    # Prepara os dados de entrada para o formato esperado pelo modelo
+    # O modelo espera um DataFrame com as colunas na ordem correta
+    # As colunas e a ordem são geralmente armazenadas com o modelo treinado
+    
+    # Extrai o modelo, o scaler e as colunas do objeto treinado
+    model = trained_model[0]
+    scaler = trained_model[1]
+    X_cols = trained_model[2]
+    y_cols = trained_model[3]
+
+    # Converte o dicionário de entrada para um DataFrame
+    X_new_df = pd.DataFrame([X_new])
+    
+    # Garante que as colunas categóricas (como Biomass) sejam tratadas se necessário
+    # O BioethanolOptimizer deve ter um método para pré-processar os dados novos
+    # X_processed = optimizer.preprocess_input(X_new_df, X_cols)
+
+    # Normaliza os dados usando o mesmo scaler do treinamento
+    X_scaled = scaler.transform(X_new_df[X_cols])
+
+    # Realiza a predição
+    y_pred = model.predict(X_scaled)
+
+    # Formata a saída em um dicionário, como na função de simulação antiga
+    # Assumindo que y_pred é um array com as predições na ordem de y_cols
+    results = {label: round(value, 2) for label, value in zip(y_cols, y_pred[0])}
+    
+    # Adiciona outras métricas se necessário, como na função antiga
+    # Exemplo:
+    if 'Glicose (g/L)' in results and 'Etanol (g/L)' not in results:
+        results['Etanol (g/L)'] = round(results['Glicose (g/L)'] * 0.51 * 0.9, 2) # Conversão teórica
+
+    return results
+
+    # return None
 
 def params_simulate(dataset):
     bioethanol_optimizer = bioopt.BioethanolOptimizer(dataset)
@@ -96,23 +139,24 @@ def params_simulate(dataset):
         on_change=lambda: st.session_state.__setitem__('selected_biomass', st.session_state.selected_biomass),
         index=0
     )
-    
-    with st.expander("⚙️ Parâmetros Avançados"):
-        acid_col, stime_col = st.columns(2)
-        with acid_col:
-            st.number_input(
-                'Concentração Ácida (%)', 
-                min_value=0.0,
-                max_value=100.0, 
-                # value=2.5,
-                step=0.1,
-                key='acid',
-                on_change=lambda: st.session_state.__setitem__('acid', st.session_state.acid),
-                help="Concentração de ácido na solução"
-                )
-        with stime_col:
-            time = st.number_input(
-                'Tempo de Sacarificação (min)', 
+
+    if st.toggle("Parâmetros Avançados", False, help="Habilita ajustes avançados para otimização"):
+        with st.expander("⚙️ Parâmetros de Sacarificação (hidrólise enzimática)", expanded=False):
+            acid_col, stime_col = st.columns(2)
+            with acid_col:
+                st.number_input(
+                    'Concentração Ácida (pH)', 
+                    min_value=0.0,
+                    max_value=100.0, 
+                    # value=2.5,
+                    step=0.1,
+                    key='acid',
+                    on_change=lambda: st.session_state.__setitem__('acid', st.session_state.acid),
+                    help="Concentração de ácido na solução"
+                    )
+            with stime_col:
+                st.number_input(
+                'Tempo de Sacarificação (horas)', 
                 min_value=0,
                 # value=45,
                 step=1,
@@ -120,7 +164,71 @@ def params_simulate(dataset):
                 on_change=lambda: st.session_state.__setitem__('time', st.session_state.time),
                 help="Tempo de reação da sacarificação"
                 )
-    # st.markdown("---")
+            
+            temp_col, rpm_col = st.columns(2)
+            with temp_col:
+                st.number_input(
+                'Temperatura (°C)',
+                min_value=0.0,
+                value=30.0,
+                step=0.5,
+                key='temp',
+                on_change=lambda: st.session_state.__setitem__('temp', st.session_state.temp),
+                help="Temperatura do processo de sacarificação"
+                )
+            with rpm_col:
+                st.number_input(
+                'Velocidade de Agitação (RPM)',
+                min_value=0,
+                value=150,
+                step=10,
+                key='rpm',
+                on_change=lambda: st.session_state.__setitem__('rpm', st.session_state.rpm),
+                help="Velocidade de agitação durante a sacarificação"
+                )
+        
+        with st.expander("⚙️ Parâmetros de Fermentação", expanded=False):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.number_input(
+                    'Concentração Ácida (pH)', 
+                    min_value=0.0,
+                    max_value=100.0, 
+                    # value=2.5,
+                    step=0.1,
+                    key='f_acid',
+                    on_change=lambda: st.session_state.__setitem__('f_acid', st.session_state.f_acid),
+                    help="Concentração de ácido na solução"
+                    )
+                st.number_input(
+                    'Tempo de Sacarificação (horas)', 
+                    min_value=0,
+                    # value=45,
+                    step=1,
+                    key='f_time',
+                    on_change=lambda: st.session_state.__setitem__('f_time', st.session_state.f_time),
+                    help="Tempo de reação da sacarificação"
+                    )
+            with col2:
+                st.number_input(
+                    'Temperatura (°C)',
+                    min_value=0.0,
+                    value=30.0,
+                    step=0.5,
+                    key='f_temp',
+                    on_change=lambda: st.session_state.__setitem__('f_temp', st.session_state.f_temp),
+                    help="Temperatura do processo de sacarificação"
+                    )
+        
+                st.number_input(
+                    'Velocidade de Agitação (RPM)',
+                    min_value=0,
+                    value=150,
+                    step=10,
+                    key='f_rpm',
+                    on_change=lambda: st.session_state.__setitem__('f_rpm', st.session_state.f_rpm),
+                    help="Velocidade de agitação durante a sacarificação"
+                    )
     
     sum = st.session_state.input_c + st.session_state.input_h + st.session_state.input_l
     if sum > 100 or sum <= 0:
@@ -150,7 +258,8 @@ def run_simulation():
                     'H (%)': st.session_state.input_h,
                     'L (%)': st.session_state.input_l,
                     'Acid Conc (%)': st.session_state.acid,
-                    'S- Time (min)': st.session_state.time
+                    'S- Time (min)': st.session_state.time,
+                    'S- Temp (h)': st.session_state.temp,
                 }
 
                 # Execução da otimização
@@ -221,42 +330,78 @@ def main():
 # Início da página
     st.subheader("🔮 Predição de Rendimento de Bioetanol")
     dataset = st.session_state.current_dataset
+    optimizer = bioopt.BioethanolOptimizer(st.session_state.current_dataset)
 
-    if st.toggle("Dados Personalizados", False, help="Habilita a utilização de dados treinados pelo usuário"):
-        col1, col2 = st.columns([2, 2])
-        with col1:
-            # data.select_dataset()
-            op = data.list_files()
-            dataset_option = st.selectbox(
-                label="Selecione o conjunto de dados",
-                options=op,
-                help="Escolha o conjunto de dados para a simulação"
-            )
-            data.handle_existing_dataset(dataset_option)
-        with col2:
-            selected_option = st.selectbox(
-                label="Selecione o conjunto de treino",
-                options=["treino1", "treino2", "treino3"],
-                help="Escolha o conjunto de treino para a simulação"
-                )
+    list_train = list_files('trained_models')
+
+    if 'current_train' not in st.session_state:
+        st.session_state.current_train = optimizer.load_model(list_train[0])
+    
+    trained_model = st.session_state.current_train
+
+    # st.write(trained_model[3])
+
+
+    if st.toggle("Dados Personalizados", False, key="custom_data_toggle", 
+                help="Habilita a utilização de dados treinados pelo usuário"):
+        custom_data(list_train)
             
-        if st.button("Carregar"):
-            # st.write(st.session_state.current_name_dataset)
-            params_simulate(dataset)
     else:
         # Carrega o dataset padrão
         if 'current_dataset' not in st.session_state or st.session_state.current_dataset.empty:
             data.handle_existing_dataset(DEFAULT_DATA)
             
-        dataset = st.session_state.current_dataset 
-        
-        with st.expander("🔍 Visualizar dados Carregados", expanded=False):
-            st.write(dataset)
-        
-        params_simulate(dataset)
+    dataset = st.session_state.current_dataset 
+    
+    # with st.expander("🔍 Visualizar dados Carregados", expanded=False):
+    #     st.write(dataset)
+    
+    params_simulate(dataset)
 
-        if st.session_state.submit_simulation:
-            run_simulation()
+    if st.session_state.submit_simulation:
+        X_new = {
+                # 'Biomass': st.session_state.selected_biomass,
+                'C (%)': st.session_state.input_c,
+                'H (%)': st.session_state.input_h,
+                'L (%)': st.session_state.input_l,
+                'Acid Conc (%)': st.session_state.acid,
+                'S- Time (min)': st.session_state.time,
+                # 'S- Temp (h)': st.session_state.temp,
+            }
+        # run_simulation()
+        # st.write(X_new)
+        simulate_results(trained_model, X_new)
+
+def custom_data(list_train):
+    col1, col2 = st.columns([2, 2])
+    with st.container(border=True):
+        col1, col2 = st.columns([2, 2])
+        with col1:
+                # data.select_dataset()
+            op = data.list_files()
+            dataset_option = st.selectbox(
+                    label="Selecione o conjunto de dados",
+                    options=op,
+                    help="Escolha o conjunto de dados para a simulação"
+                )
+        with col2:
+            selected_option = st.selectbox(
+                    label="Selecione o conjunto de treino",
+                    options=list_train,
+                    help="Escolha o conjunto de treino para a simulação"
+                    )
+    
+        if st.button("Carregar"):
+            try:
+                handle_existing_dataset(dataset_option)
+                load_model(selected_option)
+                st.info(f"Modelo de treinamento carregado!")
+                # st.write(st.session_state.filename)
+                # st.write(st.session_state.current_train)
+            except Exception as e:
+                st.error(f"Erro ao carregar: {str(e)}")
+            # params_simulate(dataset)
+            return
 
 
 if __name__ == "__main__":

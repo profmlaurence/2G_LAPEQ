@@ -1,4 +1,5 @@
 import time
+import joblib
 import streamlit as st
 import pandas as pd
 from config import DATASET_DIR, DEFAULT_DATA  # Importar desde config
@@ -18,9 +19,9 @@ def handle_existing_dataset(filename):
     except Exception as e:
         st.error(f"Erro inesperado: {str(e)}")
 
-def list_files():
+def list_files(path=None):
     """Lista todos os arquivos no diretório especificado, usando pathlib."""
-    p = Path(DATASET_DIR)
+    p = Path(path) if path else Path(DATASET_DIR)
     files = []
     if p.exists() and p.is_dir():
         for item in p.iterdir():
@@ -93,3 +94,28 @@ def handle_save(dataset, name=DEFAULT_DATA):
         
     except Exception as e:
         st.error(f"Erro ao salvar arquivo: {str(e)}")
+
+def load_model(filepath):
+        """Loads a trained model and its metadata from a serialized file."""
+        try:
+            # Load the data from the specified file
+            training_data = joblib.load("trained_models/"+filepath)
+
+            # Extract the components
+            # model = training_data['model']
+            # model_name = training_data['model_name']
+            # columns_input = training_data['columns_input']
+            # columns_output = training_data['columns_output']
+
+            # st.success(f"Modelo '{model_name}' carregado com sucesso de: `{filepath}`")
+
+            st.session_state.loaded_model = training_data
+
+            return
+
+        except FileNotFoundError:
+            st.error(f"Erro: O arquivo não foi encontrado em `{filepath}`.")
+            return
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao carregar o modelo: {e}")
+            return
