@@ -22,7 +22,7 @@ def main():
         st.divider()
         # dt.select_dataset()
         # dt.show_data_interface()
-        st.switch_page("pages/data_select.py")
+        st.switch_page("pages/data.py")
 
 
     if col3.button("Fazer Predições", key="predict_model"):

@@ -38,12 +38,12 @@ def login():
         # st.session_state.logged_in = True
 
 def logout():
-    if st.button("Log out"):
-        st.session_state.logged_in = False
-        st.rerun()
+    # if st.button("Log out"):
+    st.session_state.logged_in = False
+    st.rerun()
 
 login_page = st.Page(login, title="Log in", icon=":material/login:")
-logout_page = st.Page(logout, title="Log out", icon=":material/logout:")
+logout_page = st.Page(logout, title="Sair", icon=":material/logout:")
 
 main = st.Page("main.py", title="Home", icon="🏠")
 data_page = st.Page("pages/data.py", title="Seleção dos Dados", icon="📀")
@@ -51,16 +51,19 @@ train_page = st.Page("pages/train.py", title="Treinamento", icon="🧠")
 simulation_page = st.Page("pages/simulation.py", title="Simulação", icon="📈")
 prediction_page = st.Page("pages/prediction.py", title="Previsão de Rendimento", icon="🔮")
 pred_page = st.Page("pages/pred.py", title="NEW Previsão de Rendimento", icon="♻️")
+config_user = st.Page("pages/config_user.py", title="Configurações", icon="⚙️")
 
 if st.session_state.logged_in:
     pg = st.navigation(
         {
-            "Account": [main,logout_page],
+            "": [main],
             # "": [main],
             "Treinamento": [data_page,train_page, simulation_page],
-            "Previsão": [prediction_page, pred_page]
+            "Previsão": [prediction_page, pred_page],
+            "Configurações": [logout_page],
         }
     )
+    # st.sidebar.page_link(logout_page)
 else:
     pg = st.navigation([login_page])
 
