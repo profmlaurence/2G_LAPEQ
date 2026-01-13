@@ -43,29 +43,32 @@ def select_model(columns_input,columns_output, bioopt=None):
 
                 # r2, mse, qmse, real_predito, curva = bioethanol_optimizer.fit_model_optimized(model, columns_input, columns_output)
 
-                colR, colM, colRM = st.columns(3)
-                with colM:
-                    st.metric("R² Score", f"{r2:.3f}")
-                with colR:
-                    st.metric("MSE", f"{mse:.3f}")
-                with colRM:
-                    st.metric("RMSE", f"{qmse:.3f}")
+                if r2 is not None:
+                    colR, colM, colRM = st.columns(3)
+                    with colM:
+                        st.metric("R² Score", f"{r2:.3f}")
+                    with colR:
+                        st.metric("MSE", f"{mse:.3f}")
+                    with colRM:
+                        st.metric("RMSE", f"{qmse:.3f}")
                 
             with col2:
-                # st.markdown("### Parâmetros de treinamento")
-                # params=None
-                st.expander("Parâmetros do treinamento", expanded=False,icon="⚙️").write(params)
-                # st.write(params)
-                
-                padrao = st.session_state.username + time.strftime("_%Y-%m-%d-%H:%M:%S")
+                if r2 is not None:
+                    # st.markdown("### Parâmetros de treinamento")
+                    # params=None
+                    st.expander("Parâmetros do treinamento", expanded=False,icon="⚙️").write(params)
+                    # st.write(params)
+                    
+                    padrao = st.session_state.username + time.strftime("_%Y-%m-%d-%H:%M:%S")
 
-                filename = st.text_input("Digite o nome do modelo para salvar:", f"{model}_{padrao}")
+                    filename = st.text_input("Digite o nome do modelo para salvar:", f"{model}_{padrao}")
 
-                if st.button("Salvar treinamento", key="save_training_button",icon="💾"):
-                    # with st.spinner("Salvando modelo..."):
-                    bioopt.save_model(filename=filename, model=model_train, model_name=model, columns_input=columns_input, columns_output=columns_output)
-                    st.session_state.current_train = filename,model_train, columns_input, columns_output
-                    st.success("Modelo salvo com sucesso",icon="📂")
+                    if st.button("Salvar treinamento", key="save_training_button",icon="💾"):
+                        # with st.spinner("Salvando modelo..."):
+                        
+                        bioopt.save_model(filename=filename, model=model_train, model_name=model, columns_input=columns_input, columns_output=columns_output)
+                        st.session_state.current_train = filename,model_train, columns_input, columns_output
+                        st.success("Modelo salvo com sucesso",icon="📂")
 
 def main():
     st.subheader("Treinamento do Modelo")

@@ -1,9 +1,7 @@
 import streamlit as st
 # import pages.data as dt
 from utils.utils_datas import handle_existing_dataset
-
-DATASET_DIR = 'dataset'
-DEFAULT_DATA = 'dados_salvos.csv'
+from config import DATASET_DIR, DEFAULT_DATA
 
 col1, col2, col3, col4 = st.columns([1,2,2,1])
 

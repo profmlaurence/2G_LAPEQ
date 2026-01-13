@@ -90,8 +90,6 @@ def handle_save(dataset, name=DEFAULT_DATA):
     try:
         dataset.to_csv(name, index=False)
         # os.save(filename, dataset)
-        st.success(f"Dados salvos com sucesso como {st.session_state.filename}!")
-        
     except Exception as e:
         st.error(f"Erro ao salvar arquivo: {str(e)}")
 

@@ -36,10 +36,6 @@ class BioethanolOptimizer:
         
         df_cleaned = self.df.copy()
         
-        X = df_cleaned[['C (%)', 'H \n(%)', 'L (%)', 'Acid Conc\n(%)', 'S- Time (min)', 'S- Temp (ᵒC)', 'F- Time (h)', 'F-Temp (ᵒC)']]
-        y_glucose = df_cleaned['Glucose (g/L)']
-        X_train, X_test, y_train, y_test = train_test_split(X, y_glucose, test_size=0.2, random_state=42)
-        
         X = df_cleaned[columns_input]
         Y = df_cleaned[columns_output]
 
@@ -137,7 +133,7 @@ class BioethanolOptimizer:
         
         if model_name == 'Deep Learning':
             st.warning("⚠️Modelo em construção...")
-            return 0.0,0.0,0.0,None
+            return 0.0,0.0,0.0,None,None
         try:
             X_train, X_test, y_train, y_test = self.preparation_data(columns_input, columns_output)
             
@@ -158,7 +154,6 @@ class BioethanolOptimizer:
             
         except Exception as e:
             st.error(f"Erro ao treinar o modelo (fit_model): {e}")
-            # return 0.0,0.0,0.0,None
         
         # self.graficos(model_name, model, X_test, y_test, y_pred)
 
