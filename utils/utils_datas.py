@@ -7,7 +7,7 @@ from pathlib import Path  # Import correcto de Path
 
 def handle_existing_dataset(filename):
     """Carrega e exibe datasets existentes."""
-    file_path = DATASET_DIR / DEFAULT_DATA  # Usar Path desde config
+    file_path = DATASET_DIR / filename  # Usar Path desde config
     
     try:
         dataset = pd.read_csv(file_path)

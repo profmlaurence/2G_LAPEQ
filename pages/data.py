@@ -38,12 +38,12 @@ def gen_synthetics(dataset):
             
 @st.dialog("Salvar Dados", width="small")
 def save_dataset_updated():
-    if not st.session_state.get("data_generated"):
-        st.warning("Gere dados antes de salvar!")
-        return
+    # if not st.session_state.get("data_generated"):
+    #     st.warning("Gere dados antes de salvar!")
+        # return
     
     padrão = st.session_state.username + time.strftime("_%Y-%m-%d-%H:%M:%S")
-    with st.form(key="save_form"):    
+    with st.form(key="save_form"):
         name = st.text_input("Nome do arquivo", value=padrão)
         submitted = st.form_submit_button("Salvar")
 
@@ -76,7 +76,7 @@ def show_data_interface(dataset=None):
         # st.subheader("Pré-visualização dos Dados")
         st.dataframe(dataset)
     
-    if len(dataset) < 100:
+    if len(dataset) < 500:
         st.warning(f"""
         Total de amostras: {len(dataset)} 
         - Este valor é considerado baixo para treinamento do modelo.
@@ -86,7 +86,7 @@ def show_data_interface(dataset=None):
         gen_synthetics(dataset)
         
         
-def show_action_buttons(dataset, bt_save=False, bt_train=False, bt_train_save=False):
+def show_action_buttons(bt_save=False, bt_train=False, bt_train_save=False):
     """Componente com botões de ação."""
     cols = st.columns([1, 2, 2, 2, 1])
     
@@ -136,7 +136,7 @@ def main():
         show_data_interface(st.session_state.current_dataset)
 
     st.divider()
-    show_action_buttons(st.session_state.current_dataset, st.session_state.bt_save, st.session_state.bt_train, st.session_state.bt_train_save)
+    show_action_buttons(st.session_state.bt_save, st.session_state.bt_train, st.session_state.bt_train_save)
         
     
 

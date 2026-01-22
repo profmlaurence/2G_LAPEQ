@@ -25,7 +25,7 @@ class BioethanolOptimizer:
         self.models = {
             "SVM (Vinitha23)": SVR(),
             "Rede Neural": MLPRegressor(),
-            "Modelo Proposto (Freitas, Gramacho, Guarda, 2024)": MLPRegressor(hidden_layer_sizes=(30, 30), max_iter=1000, random_state=42),
+            "Modelo Proposto (Freitas, Gramacho, Guarda, 2024)": MLPRegressor(hidden_layer_sizes=(30, 30), max_iter=100000, random_state=42),
             "Random Forest": RandomForestRegressor(random_state=42),
             "Regressão Linear":  LinearRegression(),
             "Deep Learning": "Deep Learning"

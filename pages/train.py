@@ -41,8 +41,6 @@ def select_model(columns_input,columns_output, bioopt=None):
                 
                 r2, mse, qmse, params, model_train = bioopt.fit_model(model, columns_input, columns_output)
 
-                # r2, mse, qmse, real_predito, curva = bioethanol_optimizer.fit_model_optimized(model, columns_input, columns_output)
-
                 if r2 is not None:
                     colR, colM, colRM = st.columns(3)
                     with colM:
@@ -61,7 +59,7 @@ def select_model(columns_input,columns_output, bioopt=None):
                     
                     padrao = st.session_state.username + time.strftime("_%Y-%m-%d-%H:%M:%S")
 
-                    filename = st.text_input("Digite o nome do modelo para salvar:", f"{model}_{padrao}")
+                    filename = st.text_input("Digite o nome do modelo para salvar:", f"{padrao}")
 
                     if st.button("Salvar treinamento", key="save_training_button",icon="💾"):
                         # with st.spinner("Salvando modelo..."):
