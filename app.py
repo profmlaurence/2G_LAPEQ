@@ -59,7 +59,7 @@ if st.session_state.logged_in:
             "": [main],
             # "": [main],
             "Treinamento": [data_page,train_page, simulation_page],
-            "Previsão": [prediction_page, pred_page],
+            "Previsão": [prediction_page],#, pred_page],
             "Configurações": [logout_page],
         }
     )

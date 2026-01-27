@@ -1,96 +1,194 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 import matplotlib.pyplot as plt
+import altair as alt
 import utils.BioethanolOptimizer as bioopt
 import utils.utils_datas as data
 
 class SimulationPlots:
     """
-    A class to encapsulate the simulation data and plotting logic for ROC and confusion matrix.
+    A class to encapsulate the simulation data and plotting logic.
     """
-    # modelo_select = None
     
-    def __init__(self, size=100):
+    def __init__(self, X_test=None, y_test=None, y_pred=None, model_name="Modelo"):
         """
         Initializes the simulation data.
         """
-        self.size = size
-        self.y_true = np.random.choice([0, 1], size=self.size)
-        self.y_pred = np.random.choice([0, 1], size=self.size)
-        self.y_scores = np.random.rand(self.size)
+        self.X_test = X_test
+        self.y_true = y_test
+        self.y_pred = y_pred
+        self.model_name = model_name
+        
+        # Fallback data if none provided (for testing layout)
+        if self.y_true is None:
+            self.size = 100
+            self.y_true = np.random.choice([0, 1], size=self.size)
+            self.y_pred = np.random.choice([0, 1], size=self.size)
+            self.y_scores = np.random.rand(self.size)
+            self.X_test = np.random.rand(self.size, 2)
+        else:
+            self.size = len(self.y_true)
+            self.y_scores = self.y_pred
+    
+    def plot_prediction_scatter(self):
+        """
+        Scatter plot of the simulation data (Real vs Predicted).
+        """
+        fig, ax = plt.subplots()
+        ax.scatter(self.y_true, self.y_pred, alpha=0.5)
+
+        # Add identity line
+        min_val = min(np.min(self.y_true), np.min(self.y_pred))
+        max_val = max(np.max(self.y_true), np.max(self.y_pred))
+        ax.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2)
+
+        ax.set_xlabel('Valores Reais')
+        ax.set_ylabel('Valores Previstos')
+        ax.set_title(f'Gráfico de Dispersão - {self.model_name}')
+        return fig  
+
+    def plot_3d_surface(self):
+        """
+        Plots a 3D surface plot of the simulation data using Altair.
+        """
+        try:
+            if self.X_test is None:
+                st.warning("Dados X_test não disponíveis.")
+                return
+
+            # Ensure X_test is accessible as array
+            X_vis = self.X_test.values if isinstance(self.X_test, pd.DataFrame) else self.X_test
+
+            if X_vis.shape[1] < 2:
+                st.warning("⚠️ Não há features suficientes para gráfico 3D.")
+                return
+
+            df_plot = pd.DataFrame(X_vis, columns=[f'Feature_{i+1}' for i in range(X_vis.shape[1])])
+            
+            # Flatten arrays
+            y_t = self.y_true.values.flatten() if hasattr(self.y_true, 'values') else np.array(self.y_true).flatten()
+            y_p = self.y_pred.flatten() if hasattr(self.y_pred, 'flatten') else np.array(self.y_pred).flatten()
+
+            df_plot['Actual'] = y_t
+            df_plot['Predicted'] = y_p
+
+            feature_x = df_plot.columns[0]
+            feature_y = df_plot.columns[1]
+
+            chart = alt.Chart(df_plot).mark_circle(size=60).encode(
+                x=feature_x,
+                y=feature_y,
+                color='Actual',
+                tooltip=['Actual', 'Predicted']
+            ).properties(
+                title=f'Gráfico 3D - {self.model_name}'
+            ).interactive()
+
+            st.altair_chart(chart, use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Erro ao gerar gráfico 3D: {e}")
 
     def plot_roc_curve(self):
         """
         Computes and plots the Receiver Operating Characteristic (ROC) curve.
         """
-        fpr, tpr, _ = roc_curve(self.y_true, self.y_scores)
-        roc_auc = auc(fpr, tpr)
+        try:
+            # Check for binary classification
+            if len(np.unique(self.y_true)) != 2:
+                st.info("Curva ROC disponível apenas para classificação binária.")
+                return None
 
-        fig, ax = plt.subplots()
-        ax.plot(fpr, tpr, color='darkorange', lw=2, label=f'Curva ROC (área = {roc_auc:.2f})')
-        ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-        ax.set_xlim([0.0, 1.0])
-        ax.set_ylim([0.0, 1.05])
-        ax.set_xlabel('Taxa de Falsos Positivos')
-        ax.set_ylabel('Taxa de Verdadeiros Positivos')
-        ax.set_title('Receiver Operating Characteristic')
-        ax.legend(loc="lower right")
-        return fig
+            fpr, tpr, _ = roc_curve(self.y_true, self.y_scores)
+            roc_auc = auc(fpr, tpr)
+
+            fig, ax = plt.subplots()
+            ax.plot(fpr, tpr, color='darkorange', lw=2, label=f'Curva ROC (área = {roc_auc:.2f})')
+            ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+            ax.set_xlim([0.0, 1.0])
+            ax.set_ylim([0.0, 1.05])
+            ax.set_xlabel('Taxa de Falsos Positivos')
+            ax.set_ylabel('Taxa de Verdadeiros Positivos')
+            ax.set_title('Receiver Operating Characteristic')
+            ax.legend(loc="lower right")
+            return fig
+        except Exception as e:
+            st.error(f"Erro ao gerar ROC: {e}")
+            return None
 
     def plot_confusion_matrix(self):
         """
         Computes and plots the confusion matrix.
         """
-        cm = confusion_matrix(self.y_true, self.y_pred)
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-        ax.set_xlabel('Valores Previstos')
-        ax.set_ylabel('Valores Reais')
-        ax.set_title('Matriz de Confusão')
-        return fig
+        try:
+            # Heuristic check for regression
+            if len(np.unique(self.y_true)) > 20:
+                st.info("Matriz de confusão não recomendada para regressão contínua.")
+                return None
 
-    def plot_scatter(self):
-        """
-        Plots a scatter plot of true values against scores.
-        """
-        fig, ax = plt.subplots()
-        ax.scatter(self.y_true, self.y_scores, alpha=0.5)
-        ax.set_xlabel('Valores Reais')
-        ax.set_ylabel('Scores de Predição')
-        ax.set_title('Gráfico de Dispersão')
-        return fig
+            cm = confusion_matrix(self.y_true, np.round(self.y_pred))
+            fig, ax = plt.subplots()
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+            ax.set_xlabel('Valores Previstos')
+            ax.set_ylabel('Valores Reais')
+            ax.set_title('Matriz de Confusão')
+            return fig
+        except Exception as e:
+            st.error(f"Erro ao gerar Matriz de Confusão: {e}")
+            return None
 
     def run(self):
         """
         Runs the Streamlit application to display the plots in tabs.
         """
         st.header("Visualizações da Simulação")
-        tab1, tab2, tab3 = st.tabs(["Curva ROC", "Matriz de Confusão", "Gráfico de Dispersão"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Dispersão", "Visualização 3D", "Curva ROC", "Matriz de Confusão"])
 
         with tab1:
-            st.subheader("Curva ROC")
-            fig_roc = self.plot_roc_curve()
-            st.pyplot(fig_roc)
-
-        with tab2:
-            st.subheader("Matriz de Confusão")
-            fig_cm = self.plot_confusion_matrix()
-            st.pyplot(fig_cm)
-
-        with tab3:
-            st.subheader("Gráfico de Dispersão")
-            fig_scatter = self.plot_scatter()
+            st.subheader("Gráfico de Dispersão (Real vs Previsto)")
+            fig_scatter = self.plot_prediction_scatter()
             st.pyplot(fig_scatter)
 
-if __name__ == "__main__":
-    simulation = SimulationPlots()
-    optimizer = bioopt.BioethanolOptimizer(st.session_state.filename)
+        with tab2:
+            st.subheader("Visualização 3D")
+            self.plot_3d_surface()
 
-    modelo_select = st.selectbox("Selecione o modelo treinado", [" "] +data.list_files("trained_models"),index=0)
+        with tab3:
+            st.subheader("Curva ROC")
+            fig_roc = self.plot_roc_curve()
+            if fig_roc:
+                st.pyplot(fig_roc)
+
+        with tab4:
+            st.subheader("Matriz de Confusão")
+            fig_cm = self.plot_confusion_matrix()
+            if fig_cm:
+                st.pyplot(fig_cm)
+
+if __name__ == "__main__":
+    filename = st.session_state.current_dataset 
+    optimizer = bioopt.BioethanolOptimizer(filename)
+
+    modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + data.list_files("trained_models"), index=0)
     
-    if modelo_select != " ":
-        model, model_name, columns_input, columns_output = optimizer.load_model(modelo_select)
-        
-        simulation.run()
+    sim = SimulationPlots()
+    sim.run()
+    # if modelo_select != " ":
+    #     try:
+    #         model, model_name, columns_input, columns_output = optimizer.load_model(modelo_select)
+            
+    #         if model:
+    #             # Prepare data
+    #             X_train, X_test, y_train, y_test = optimizer.preparation_data(columns_input, columns_output)
+                
+    #             # Predict
+    #             y_pred = model.predict(X_test)
+                
+    #             # Run simulation plots
+    #             simulation = SimulationPlots(X_test, y_test, y_pred, model_name)
+    #             simulation.run()
+    #     except Exception as e:
+    #         st.error(f"Erro ao carregar modelo ou dados: {e}")

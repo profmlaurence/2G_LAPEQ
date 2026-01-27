@@ -1,3 +1,4 @@
+from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 import streamlit as st
 import pandas as pd
@@ -28,7 +29,8 @@ class BioethanolOptimizer:
             "Modelo Proposto (Freitas, Gramacho, Guarda, 2024)": MLPRegressor(hidden_layer_sizes=(30, 30), max_iter=100000, random_state=42),
             "Random Forest": RandomForestRegressor(random_state=42),
             "Regressão Linear":  LinearRegression(),
-            "Deep Learning": "Deep Learning"
+            "Deep Learning": "Deep Learning",
+            "My model": "My model"
             
         }
 
@@ -134,6 +136,44 @@ class BioethanolOptimizer:
         if model_name == 'Deep Learning':
             st.warning("⚠️Modelo em construção...")
             return 0.0,0.0,0.0,None,None
+        elif model_name == 'My model':
+
+            X_train, X_test, y_train, y_test = self.preparation_data(columns_input, columns_output)
+
+            # Normalizar os dados
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+
+            # 1. Redução de dimensionalidade com PCA
+            pca = PCA(n_components=0.95) # Manter 95% da variância
+            X_train_pca = pca.fit_transform(X_train_scaled)
+            X_test_pca = pca.transform(X_test_scaled)
+
+            # 2. Treinamento de uma Rede Neural Artificial (ANN) sobre os componentes principais
+            mlp_pca = MLPRegressor(hidden_layer_sizes=(100, 100), max_iter=2000, random_state=42)
+            mlp_pca.fit(X_train_pca, y_train) # Treinando para glicose como exemplo
+
+            # Obter as saídas da ANN para usar como entrada para o SVM
+            X_train_ann_output = mlp_pca.predict(X_train_pca).reshape(-1, 1)
+            X_test_ann_output = mlp_pca.predict(X_test_pca).reshape(-1, 1)
+
+
+            # 3. Aplicação de uma Máquina de Vetores de Suporte (SVM) sobre as saídas da ANN
+            svr_ann = SVR(kernel='rbf', C=1.0, epsilon=0.1) # Exemplo de parâmetros
+            svr_ann.fit(X_train_ann_output, y_train) # Treinando o SVM com as saídas da ANN
+
+            # Previsões combinadas (ANN + SVM)
+            y_pred_combined_glucose = svr_ann.predict(X_test_ann_output)
+
+            # Avaliar o modelo combinado
+            mse = mean_squared_error(y_test, y_pred_combined_glucose)
+            r2 = r2_score(y_test, y_pred_combined_glucose)
+
+            print("MSE Combined (Glucose):", mse)
+            print("R2 Combined (Glucose):", r2)
+        
+            return r2, mse, mse**0.5, None, None
         try:
             X_train, X_test, y_train, y_test = self.preparation_data(columns_input, columns_output)
             
@@ -228,3 +268,30 @@ class BioethanolOptimizer:
         except Exception as e:
             st.error(f"Ocorreu um erro ao carregar o modelo: {e}")
             return None, None, None, None
+    
+    def graf_3d_curve(self, model_name, X_test, y_test, y_pred):
+        try:
+            df_plot = pd.DataFrame(X_test, columns=[f'Feature_{i+1}' for i in range(X_test.shape[1])])
+            df_plot['Actual'] = y_test
+            df_plot['Predicted'] = y_pred
+
+            if X_test.shape[1] < 2:
+                st.warning("⚠️ Não há features suficientes para gráfico 3D.")
+                return
+
+            feature_x = df_plot.columns[0]
+            feature_y = df_plot.columns[1]
+
+            chart = alt.Chart(df_plot).mark_circle(size=60).encode(
+                x=feature_x,
+                y=feature_y,
+                color='Actual',
+                tooltip=['Actual', 'Predicted']
+            ).properties(
+                title=f'Gráfico 3D - {model_name}'
+            ).interactive()
+
+            st.altair_chart(chart, use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Erro ao gerar gráfico 3D: {e}")
