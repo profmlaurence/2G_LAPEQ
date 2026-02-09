@@ -1,3 +1,6 @@
+import joblib
+import os
+import time
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -13,14 +16,49 @@ class SimulationPlots:
     A class to encapsulate the simulation data and plotting logic.
     """
     
-    def __init__(self, X_test=None, y_test=None, y_pred=None, model_name="Modelo"):
+    
+    def __init__(self, filepath):
+        """Initialize the SimulationPlots class by loading the model and data from a file."""
+        try:
+            # Load the data from the specified file
+            training_data = joblib.load("trained_models/"+filepath)
+
+            # Extract the components
+            self.model = training_data['model']
+            self.model_name = training_data['model_name']
+            self.columns_input = training_data['columns_input']
+            self.columns_output = training_data['columns_output']
+            self.dataset = training_data['dataset']
+            self.filename = training_data['filename']
+
+            st.success(f"Modelo '{self.model_name}' carregado com sucesso de: `{filepath}`")
+
+            # return model, model_name, columns_input, columns_output
+
+        except FileNotFoundError:
+            st.error(f"Erro: O arquivo não foi encontrado em `{filepath}`.")
+            return None, None, None, None
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao carregar o modelo: {e}")
+            return None, None, None, None
+        
+    def data_prepare(self, X_test=None, y_test=None, y_pred=None, model_name="Modelo"):
         """
         Initializes the simulation data.
         """
-        self.X_test = X_test
-        self.y_true = y_test
-        self.y_pred = y_pred
-        self.model_name = model_name
+         # Obter predições se o modelo estiver carregado
+        if hasattr(self, 'model') and self.model is not None:
+            optimizer = bioopt.BioethanolOptimizer(self.dataset)
+            X_train_scaled, X_test_scaled, y_train, y_test_actual = optimizer.preparation_data(self.columns_input, self.columns_output)
+            
+            if X_test_scaled is not None:
+                self.X_test = X_test_scaled
+                self.y_true = y_test_actual
+                self.y_pred = self.model.predict(X_test_scaled)
+        # self.X_test = X_test
+        # self.y_true = y_test
+        # self.y_pred = y_pred
+        # self.model_name = model_name
         
         # Fallback data if none provided (for testing layout)
         if self.y_true is None:
@@ -141,6 +179,7 @@ class SimulationPlots:
             return None
 
     def run(self):
+
         """
         Runs the Streamlit application to display the plots in tabs.
         """
@@ -169,26 +208,51 @@ class SimulationPlots:
                 st.pyplot(fig_cm)
 
 if __name__ == "__main__":
-    filename = st.session_state.current_dataset 
-    optimizer = bioopt.BioethanolOptimizer(filename)
+    # filename = st.session_state.current_dataset 
 
-    modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + data.list_files("trained_models"), index=0)
+    col1, col2 = st.columns([0.85, 0.15], vertical_alignment="bottom")
     
-    sim = SimulationPlots()
-    sim.run()
-    # if modelo_select != " ":
-    #     try:
-    #         model, model_name, columns_input, columns_output = optimizer.load_model(modelo_select)
+    with col1:
+        modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + data.list_files("trained_models"), index=0)
+    
+    with col2:
+        if modelo_select != " ":
+            if st.button("🗑️", help="Excluir modelo selecionado"):
+                try:
+                    os.remove(os.path.join("trained_models", modelo_select))
+                    st.toast(f"Modelo excluído!")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+
+    if modelo_select != " ":
+        try:
+            simulation = SimulationPlots(modelo_select)
+            simulation.data_prepare(model_name=simulation.model_name)
+            
+            # bioopt.BioethanolOptimizer(simulation.dataset)  # Initialize optimizer if needed for data preparation
+
+            # Run the simulation plots
+            simulation.run()
+        except Exception as e:
+            st.error(f"Erro ao carregar modelo ou dados: {e}")
+
+            
+    #         model, model_name, columns_input, columns_output = load_model(modelo_select)
+    #         optimizer = bioopt.BioethanolOptimizer(filename)
             
     #         if model:
     #             # Prepare data
     #             X_train, X_test, y_train, y_test = optimizer.preparation_data(columns_input, columns_output)
                 
-    #             # Predict
-    #             y_pred = model.predict(X_test)
+    #         #     # Predict
+    #         #     y_pred = model.predict(X_test)
                 
-    #             # Run simulation plots
-    #             simulation = SimulationPlots(X_test, y_test, y_pred, model_name)
-    #             simulation.run()
+    #         #     # Run simulation plots
+    #         #     simulation = SimulationPlots(X_test, y_test, y_pred, model_name)
+    #             # simulation.run()
     #     except Exception as e:
     #         st.error(f"Erro ao carregar modelo ou dados: {e}")
+    # # sim = SimulationPlots()
+    # # sim.run()

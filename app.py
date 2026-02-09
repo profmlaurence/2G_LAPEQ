@@ -60,7 +60,7 @@ if st.session_state.logged_in:
             # "": [main],
             "Treinamento": [data_page,train_page, simulation_page],
             "Previsão": [prediction_page],#, pred_page],
-            "Configurações": [logout_page],
+            "Configurações": [config_user,logout_page],
         }
     )
     # st.sidebar.page_link(logout_page)

@@ -64,7 +64,7 @@ def select_model(columns_input,columns_output, bioopt=None):
                     if st.button("Salvar treinamento", key="save_training_button",icon="💾"):
                         # with st.spinner("Salvando modelo..."):
                         
-                        bioopt.save_model(filename=filename, model=model_train, model_name=model, columns_input=columns_input, columns_output=columns_output)
+                        bioopt.save_model(filename=filename, model=model_train, model_name=model, columns_input=columns_input, columns_output=columns_output, dataset=st.session_state.current_dataset)
                         st.session_state.current_train = filename,model_train, columns_input, columns_output
                         st.success("Modelo salvo com sucesso",icon="📂")
 
