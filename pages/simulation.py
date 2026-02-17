@@ -31,7 +31,7 @@ class SimulationPlots:
             self.dataset = training_data['dataset']
             self.filename = training_data['filename']
 
-            st.success(f"Modelo '{self.model_name}' carregado com sucesso de: `{filepath}`")
+            st.success(f"Modelo '{self.model_name}' carregado com sucesso!")
 
             # return model, model_name, columns_input, columns_output
 
@@ -196,16 +196,8 @@ class SimulationPlots:
             self.plot_3d_surface()
 
         with tab3:
-            st.subheader("Curva ROC")
-            fig_roc = self.plot_roc_curve()
-            if fig_roc:
-                st.pyplot(fig_roc)
-
-        with tab4:
-            st.subheader("Matriz de Confusão")
-            fig_cm = self.plot_confusion_matrix()
-            if fig_cm:
-                st.pyplot(fig_cm)
+            st.subheader("Outras métricas")
+            
 
 if __name__ == "__main__":
     # filename = st.session_state.current_dataset 
@@ -231,28 +223,10 @@ if __name__ == "__main__":
             simulation = SimulationPlots(modelo_select)
             simulation.data_prepare(model_name=simulation.model_name)
             
+            
             # bioopt.BioethanolOptimizer(simulation.dataset)  # Initialize optimizer if needed for data preparation
 
             # Run the simulation plots
             simulation.run()
         except Exception as e:
             st.error(f"Erro ao carregar modelo ou dados: {e}")
-
-            
-    #         model, model_name, columns_input, columns_output = load_model(modelo_select)
-    #         optimizer = bioopt.BioethanolOptimizer(filename)
-            
-    #         if model:
-    #             # Prepare data
-    #             X_train, X_test, y_train, y_test = optimizer.preparation_data(columns_input, columns_output)
-                
-    #         #     # Predict
-    #         #     y_pred = model.predict(X_test)
-                
-    #         #     # Run simulation plots
-    #         #     simulation = SimulationPlots(X_test, y_test, y_pred, model_name)
-    #             # simulation.run()
-    #     except Exception as e:
-    #         st.error(f"Erro ao carregar modelo ou dados: {e}")
-    # # sim = SimulationPlots()
-    # # sim.run()
