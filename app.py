@@ -22,27 +22,12 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 
-def login():
-    col1, col2 = st.columns([1, 1])
-    username = col1.text_input("Usuário", value="lapeq", disabled=True)
-    password = col2.text_input("Senha", type="password", value="la123", disabled=True)
-    if st.button("Log in", key="login"):
-        if username == "lapeq" and password == "la123":
-            st.session_state.username = username
-            st.session_state.logged_in = True
-            st.success("Login bem-sucedido!")
-            st.rerun()
-        else:
-            st.error("Usuário ou senha incorretos.")
-            st.session_state.logged_in = False
-        # st.session_state.logged_in = True
-
 def logout():
     # if st.button("Log out"):
     st.session_state.logged_in = False
     st.rerun()
 
-login_page = st.Page(login, title="Log in", icon=":material/login:")
+login_page = st.Page("pages/login.py", title="Log in", icon=":material/login:")
 logout_page = st.Page(logout, title="Sair", icon=":material/logout:")
 
 main = st.Page("main.py", title="Home", icon="🏠")
@@ -52,11 +37,13 @@ simulation_page = st.Page("pages/simulation.py", title="Simulação", icon="📈
 prediction_page = st.Page("pages/prediction.py", title="Previsão de Rendimento", icon="🔮")
 pred_page = st.Page("pages/pred.py", title="NEW Previsão de Rendimento", icon="♻️")
 config_user = st.Page("pages/config_user.py", title="Configurações", icon="⚙️")
+apresentacao_page = st.Page("pages/apresentacao.py", title="Apresentação", icon="⚗️")
+pricing_page = st.Page("pages/pricing.py", title="Planos", icon="💲")
 
 if st.session_state.logged_in:
     pg = st.navigation(
         {
-            "": [main],
+            "": [main, apresentacao_page, pricing_page],
             # "": [main],
             "Treinamento": [data_page,train_page, simulation_page],
             "Previsão": [prediction_page],#, pred_page],
@@ -65,7 +52,8 @@ if st.session_state.logged_in:
     )
     # st.sidebar.page_link(logout_page)
 else:
-    pg = st.navigation([login_page])
+    # pg = st.navigation([login_page])
+    pg = st.navigation([apresentacao_page, login_page, pricing_page])
 
 pg.run()
 

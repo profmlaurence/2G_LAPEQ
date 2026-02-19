@@ -192,7 +192,7 @@ def main():
         "Selecione o dataset que deseja usar para treinar o modelo ou fazer previsões."
     )
     dataset_option = select_dataset()
-    st.session_state.bt_save = st.session_state.bt_train = st.session_state.bt_train_save = False
+    st.session_state.bt_save = st.session_state.bt_train = st.session_state.bt_train_save = st.session_state.bt_analyze = False
 
     if 'new_dataset' not in st.session_state:
         st.session_state.new_dataset = None
@@ -209,7 +209,6 @@ def main():
         
     else:
         st.session_state.bt_train = True
-        st.session_state.bt_analyze = False
         handle_existing_dataset(dataset_option)
         show_data_interface(st.session_state.current_dataset)
 

@@ -88,7 +88,8 @@ def handle_save(dataset, name=DEFAULT_DATA):
         st.session_state.filename = DEFAULT_DATA
     
     try:
-        dataset.to_csv(name, index=False)
+        file_path = DATASET_DIR / name
+        dataset.to_csv(file_path, index=False)
         # os.save(filename, dataset)
     except Exception as e:
         st.error(f"Erro ao salvar arquivo: {str(e)}")

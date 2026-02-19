@@ -116,7 +116,7 @@ class BioethanolOptimizer:
                     n_jobs=-1
                 )
                 
-                st.write(f"🔍 Otimizando hiperparâmetros para 111 {param_grid}...")
+                st.write(f"🔍 Otimizando hiperparâmetros para {param_grid}...")
                 grid.fit(X_train, y_train)
                 
                 # Usa o melhor modelo encontrado
