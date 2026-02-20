@@ -18,7 +18,6 @@ jsonschema-specifications
 kiwisolver
 MarkupSafe
 matplotlib
-narwhals
 numpy
 packaging
 pandas

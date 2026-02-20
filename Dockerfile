@@ -1,18 +1,13 @@
-FROM python:3.10-slim
+FROM python:3.14-slim
 
-FROM gcr.io/google-appengine/python
+# Define o diretório de trabalho
+WORKDIR /app
 
-# Ref:
-# * https://github.com/GoogleCloudPlatform/python-runtime/blob/8cdc91a88cd67501ee5190c934c786a7e91e13f1/README.md#kubernetes-engine--other-docker-hosts
-# * https://github.com/GoogleCloudPlatform/python-runtime/blob/8cdc91a88cd67501ee5190c934c786a7e91e13f1/scripts/testdata/hello_world_golden/Dockerfile
-RUN virtualenv /env -p python3.7
+# Copia o arquivo de requisitos e instala as dependências
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-ENV VIRTUAL_ENV /env
-ENV PATH /env/bin:$PATH
+# Copia o restante do código da aplicação
+COPY . .
 
-ADD requirements.txt /app/
-RUN pip install -r requirements.txt
-
-ADD . /app
-
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port", "8080"]
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
