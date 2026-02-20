@@ -60,6 +60,16 @@ pg.run()
 
 # pg.run()
 # Footer
-st.markdown(
-    "<div style='text-align: center; color: grey;'>Laboratório de Pesquisa em Química Ambiental e de Biocombustíveis <br/>Universidade Federal do Tocantins - UFT, Campus de Palmas - CUP.</div>",
-    unsafe_allow_html=True)
+col1, col2, col3 = st.columns([1, 4, 1])
+with col2:
+    st.markdown(
+        "<div style='text-align: center; color: grey;'><p>Laboratório de Pesquisa em Química Ambiental e de Biocombustíveis <br/>Universidade Federal do Tocantins - UFT, Campus de Palmas - CUP.</p></div>",
+        unsafe_allow_html=True
+    )
+    sub_col = st.columns([5, 1,1, 5])
+    with sub_col[1]:
+        st.image("assets/logo-lapeq.jpg", width=60)
+        
+    with sub_col[2]:
+        st.image("assets/logo-bionorte.png", width=60)
+        
