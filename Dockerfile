@@ -1,20 +1,18 @@
 FROM python:3.10-slim
 
-WORKDIR /app
+FROM gcr.io/google-appengine/python
 
-# Instala dependências do sistema necessárias para compilar alguns pacotes Python
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
+# Ref:
+# * https://github.com/GoogleCloudPlatform/python-runtime/blob/8cdc91a88cd67501ee5190c934c786a7e91e13f1/README.md#kubernetes-engine--other-docker-hosts
+# * https://github.com/GoogleCloudPlatform/python-runtime/blob/8cdc91a88cd67501ee5190c934c786a7e91e13f1/scripts/testdata/hello_world_golden/Dockerfile
+RUN virtualenv /env -p python3.7
 
-COPY requirements.txt .
+ENV VIRTUAL_ENV /env
+ENV PATH /env/bin:$PATH
 
-RUN pip install --no-cache-dir -r requirements.txt
+ADD requirements.txt /app/
+RUN pip install -r requirements.txt
 
-COPY . .
+ADD . /app
 
-EXPOSE 8080
-
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port", "8080"]
