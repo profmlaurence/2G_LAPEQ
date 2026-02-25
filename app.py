@@ -37,6 +37,7 @@ simulation_page = st.Page("pages/simulation.py", title="Simulação", icon="📈
 prediction_page = st.Page("pages/prediction.py", title="Previsão de Rendimento", icon="🔮")
 pred_page = st.Page("pages/pred.py", title="NEW Previsão de Rendimento", icon="♻️")
 config_user = st.Page("pages/config_user.py", title="Configurações", icon="⚙️")
+gcp_test_page = st.Page("pages/bucket_test.py", title="Teste GCS", icon="🪣")
 apresentacao_page = st.Page("pages/apresentacao.py", title="Apresentação", icon="⚗️")
 pricing_page = st.Page("pages/pricing.py", title="Planos", icon="💲")
 
@@ -47,7 +48,7 @@ if st.session_state.logged_in:
             # "": [main],
             "Treinamento": [data_page,train_page, simulation_page],
             "Previsão": [prediction_page],#, pred_page],
-            "Configurações": [config_user,logout_page],
+            "Configurações": [config_user, gcp_test_page, logout_page],
         }
     )
     # st.sidebar.page_link(logout_page)
