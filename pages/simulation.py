@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc
 import matplotlib.pyplot as plt
 import altair as alt
 import utils.BioethanolOptimizer as bioopt
+from utils.bucket_connect import BucketUtils
 import utils.utils_datas as data
 
 class SimulationPlots:
@@ -16,12 +17,14 @@ class SimulationPlots:
     A class to encapsulate the simulation data and plotting logic.
     """
     
-    
-    def __init__(self, filepath):
+    def __init__(self, filepath, bucket=None):
         """Initialize the SimulationPlots class by loading the model and data from a file."""
         try:
             # Load the data from the specified file
-            training_data = joblib.load("trained_models/"+filepath)
+            if bucket:
+                training_data = BucketUtils.load_model_from_bucket(bucket, filepath)
+            else:
+                training_data = joblib.load("trained_models/"+filepath)
 
             # Extract the components
             self.model = training_data['model']
@@ -46,30 +49,37 @@ class SimulationPlots:
         """
         Initializes the simulation data.
         """
+        try:
          # Obter predições se o modelo estiver carregado
-        if hasattr(self, 'model') and self.model is not None:
-            optimizer = bioopt.BioethanolOptimizer(self.dataset)
-            X_train_scaled, X_test_scaled, y_train, y_test_actual = optimizer.preparation_data(self.columns_input, self.columns_output)
+            if hasattr(self, 'model') and self.model is not None:
+                optimizer = bioopt.BioethanolOptimizer(self.dataset)
+                X_train_scaled, X_test_scaled, y_train, y_test_actual = optimizer.preparation_data(self.columns_input, self.columns_output)
+                
+                if X_test_scaled is not None:
+                    self.X_test = X_test_scaled
+                    self.y_true = y_test_actual
+                    self.y_pred = self.model.predict(X_test_scaled)
+            # self.X_test = X_test
+            # self.y_true = y_test
+            # self.y_pred = y_pred
+            # self.model_name = model_name
             
-            if X_test_scaled is not None:
-                self.X_test = X_test_scaled
-                self.y_true = y_test_actual
-                self.y_pred = self.model.predict(X_test_scaled)
-        # self.X_test = X_test
-        # self.y_true = y_test
-        # self.y_pred = y_pred
-        # self.model_name = model_name
-        
-        # Fallback data if none provided (for testing layout)
-        if self.y_true is None:
-            self.size = 100
-            self.y_true = np.random.choice([0, 1], size=self.size)
-            self.y_pred = np.random.choice([0, 1], size=self.size)
-            self.y_scores = np.random.rand(self.size)
-            self.X_test = np.random.rand(self.size, 2)
-        else:
-            self.size = len(self.y_true)
-            self.y_scores = self.y_pred
+            # Fallback data if none provided (for testing layout)
+            if self.y_true is None:
+                self.size = 100
+                self.y_true = np.random.choice([0, 1], size=self.size)
+                self.y_pred = np.random.choice([0, 1], size=self.size)
+                self.y_scores = np.random.rand(self.size)
+                self.X_test = np.random.rand(self.size, 2)
+            else:
+                self.size = len(self.y_true)
+                self.y_scores = self.y_pred
+        except Exception as e:
+            st.error(f"Erro ao preparar os dados para visualização: {e}")
+            self.y_true = None
+            self.y_pred = None
+            self.X_test = None
+            self.y_scores = None
     
     def plot_prediction_scatter(self):
         """
@@ -201,31 +211,41 @@ class SimulationPlots:
 
 if __name__ == "__main__":
     # filename = st.session_state.current_dataset 
+    bucket = st.session_state.get("bucket")
 
     col1, col2 = st.columns([0.85, 0.15], vertical_alignment="bottom")
     
     with col1:
-        modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + data.list_files("trained_models"), index=0)
+        if bucket:
+            blobs = list(bucket.list_blobs(prefix='trained_models/'))
+            files = [blob.name for blob in blobs if not blob.name.endswith('/')]
+            modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + files, index=0)
+        else:
+            modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + data.list_files("trained_models"), index=0)
     
     with col2:
         if modelo_select != " ":
             if st.button("🗑️", help="Excluir modelo selecionado"):
                 try:
-                    os.remove(os.path.join("trained_models", modelo_select))
-                    st.toast(f"Modelo excluído!")
-                    time.sleep(1)
-                    st.rerun()
+                    if bucket:
+                        BucketUtils.delete_blob_from_bucket(bucket, modelo_select)
+                        time.sleep(2)
+                        st.rerun()
+                    else:
+                        os.remove(os.path.join("trained_models", modelo_select))
+                        st.toast(f"Modelo excluído!")
+                        time.sleep(1)
+                        st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
 
     if modelo_select != " ":
         try:
-            simulation = SimulationPlots(modelo_select)
+            st.warning(st.session_state.current_dataset, icon="📂")
+            simulation = SimulationPlots(modelo_select, bucket=bucket)
             simulation.data_prepare(model_name=simulation.model_name)
             
             
-            # bioopt.BioethanolOptimizer(simulation.dataset)  # Initialize optimizer if needed for data preparation
-
             # Run the simulation plots
             simulation.run()
         except Exception as e:

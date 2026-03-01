@@ -32,6 +32,7 @@ def list_files(path=None):
         print("Diretório não encontrado ou não é um diretório válido.")
     return files
 
+@DeprecationWarning
 def handle_new_dataset():
     """Processa upload de novos datasets."""
     dataset = upload_file()
@@ -42,6 +43,7 @@ def handle_new_dataset():
     return False
         # show_data_interface()
 
+@DeprecationWarning
 def upload_file():
     """Componente para upload de arquivo CSV."""
     uploaded_file = st.file_uploader(
@@ -81,6 +83,7 @@ def generate_synthetic_data(dataset, num_samples):
     # TODO: Implementar lógica real de geração de dados sintéticos
     return pd.concat([dataset] * (num_samples // len(dataset) + 1), ignore_index=True)
 
+@DeprecationWarning
 def handle_save(dataset, name=DEFAULT_DATA):
     """Gerencia o processo de salvamento e treinamento."""
     

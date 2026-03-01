@@ -55,6 +55,7 @@ def main():
                     default_blob = next((blob for blob in blobs if blob.name == f"{DATASET_DIR}/{DEFAULT_DATA}"), None)
                     if default_blob:
                         st.write(f"**Blob do Dataset Padrão:** {default_blob.name} ({default_blob.size} bytes)")
+                        st.session_state.bucket = bucket
                         st.session_state.filename = DEFAULT_DATA
                         st.session_state.current_dataset = default_blob.name
         
