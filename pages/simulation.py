@@ -11,6 +11,7 @@ import altair as alt
 import utils.BioethanolOptimizer as bioopt
 from utils.bucket_connect import BucketUtils
 import utils.utils_datas as data
+from utils.utils_models_trained import UtilsModelsTrained
 
 class SimulationPlots:
     """
@@ -213,35 +214,11 @@ if __name__ == "__main__":
     # filename = st.session_state.current_dataset 
     bucket = st.session_state.get("bucket")
 
-    col1, col2 = st.columns([0.85, 0.15], vertical_alignment="bottom")
-    
-    with col1:
-        if bucket:
-            blobs = list(bucket.list_blobs(prefix='trained_models/'))
-            files = [blob.name for blob in blobs if not blob.name.endswith('/')]
-            modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + files, index=0)
-        else:
-            modelo_select = st.selectbox("Selecione o modelo treinado", [" "] + data.list_files("trained_models"), index=0)
-    
-    with col2:
-        if modelo_select != " ":
-            if st.button("🗑️", help="Excluir modelo selecionado"):
-                try:
-                    if bucket:
-                        BucketUtils.delete_blob_from_bucket(bucket, modelo_select)
-                        time.sleep(2)
-                        st.rerun()
-                    else:
-                        os.remove(os.path.join("trained_models", modelo_select))
-                        st.toast(f"Modelo excluído!")
-                        time.sleep(1)
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Erro: {e}")
+    # utils_models = UtilsModelsTrained(bucket)
+    modelo_select = UtilsModelsTrained.load_model_selector(bucket=bucket)
 
     if modelo_select != " ":
         try:
-            st.warning(st.session_state.current_dataset, icon="📂")
             simulation = SimulationPlots(modelo_select, bucket=bucket)
             simulation.data_prepare(model_name=simulation.model_name)
             

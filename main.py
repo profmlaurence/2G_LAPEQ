@@ -2,7 +2,7 @@ import io
 
 import pandas as pd
 import streamlit as st
-from utils.bucket_connect import BucketConnector
+from utils.bucket_connect import BucketConnector, BucketUtils
 from utils.utils_datas import handle_existing_dataset
 from config import DATASET_DIR, DEFAULT_DATA
 
@@ -57,8 +57,14 @@ def main():
                         st.write(f"**Blob do Dataset Padrão:** {default_blob.name} ({default_blob.size} bytes)")
                         st.session_state.bucket = bucket
                         st.session_state.filename = DEFAULT_DATA
-                        st.session_state.current_dataset = default_blob.name
-        
+                        st.session_state.current_dataset = BucketUtils.read_csv_from_bucket(bucket, default_blob.name)
+                    else:
+                        st.warning(f"⚠️ O dataset padrão `{DEFAULT_DATA}` não foi encontrado no bucket.")
+                else:
+                    st.warning("⚠️ Nenhum blob encontrado no bucket com o prefixo 'dataset/'.")
+        else:
+            st.warning("⚠️ Não foi possível conectar ao bucket. Verifique as credenciais e a configuração do Google Cloud.")
+            
         verified_dataset()
         handle_navigation_buttons()
         
