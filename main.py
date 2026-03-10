@@ -1,4 +1,5 @@
 import io
+import os
 
 import pandas as pd
 import streamlit as st
@@ -43,7 +44,12 @@ def handle_navigation_buttons():
 def main():
     """Main application function."""
     try:
-        bucket = BucketConnector("lapeq2g").connect()
+        # Tenta carregar do secrets.toml, caso contrário busca nas variáveis de ambiente
+        bucket_name = st.secrets.get("firebase", {}).get("storage_bucket")
+        if not bucket_name:
+            bucket_name = os.environ.get("FIREBASE_STORAGE_BUCKET", "lapeq2g")
+            
+        bucket = BucketConnector(bucket_name).connect()
         
         if bucket:
             with st.expander("🔍 Detalhes do Bucket",expanded=True):
