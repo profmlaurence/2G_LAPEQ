@@ -44,10 +44,10 @@ def handle_navigation_buttons():
 def main():
     """Main application function."""
     try:
-        # Tenta carregar do secrets.toml, caso contrário busca nas variáveis de ambiente
-        bucket_name = st.secrets.get("firebase", {}).get("storage_bucket")
+        # Carrega configuração do Google Cloud Storage
+        bucket_name = st.secrets.get("gcs", {}).get("storage_bucket")
         if not bucket_name:
-            bucket_name = os.environ.get("FIREBASE_STORAGE_BUCKET", "lapeq2g")
+            bucket_name = os.environ.get("GCS_STORAGE_BUCKET", "lapeq2g")
             
         bucket = BucketConnector(bucket_name).connect()
         

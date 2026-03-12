@@ -87,6 +87,7 @@ dataset/
 *.code-workspace
 trained_models/
 *_old*
+*.md
 
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
