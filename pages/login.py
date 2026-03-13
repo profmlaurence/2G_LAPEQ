@@ -2,29 +2,19 @@ import streamlit as st
 import os
 import time
 from utils.auth import sign_in, sign_up, get_google_auth_url, get_google_token_from_code, sign_in_with_google
+from utils.secrets_helper import get_secret_value
 
 def main():
     st.header("Acesso ao Sistema")
     
     # Recupera a API Key dos secrets
-    api_key = st.secrets.get("firebase", {}).get("api_key")
-    if not api_key:
-        api_key = os.environ.get("FIREBASE_API_KEY")
+    api_key = get_secret_value("firebase", "api_key", "FIREBASE_API_KEY")
     
     # Configuração do Google OAuth
-    google_secrets = st.secrets.get("google", {})
-    client_id = google_secrets.get("client_id")
-    if not client_id:
-        client_id = os.environ.get("GOOGLE_CLIENT_ID")
-        
-    client_secret = google_secrets.get("client_secret")
-    if not client_secret:
-        client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
-        
-    redirect_uri = google_secrets.get("redirect_uri")
-    if not redirect_uri:
-        # Em produção, defina GOOGLE_REDIRECT_URI para a URL do Cloud Run + /login
-        redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8501/login")
+    client_id = get_secret_value("google", "client_id", "GOOGLE_CLIENT_ID")
+    client_secret = get_secret_value("google", "client_secret", "GOOGLE_CLIENT_SECRET")
+    # Em produção, defina GOOGLE_REDIRECT_URI para a URL do Cloud Run + /login
+    redirect_uri = get_secret_value("google", "redirect_uri", "GOOGLE_REDIRECT_URI", "http://localhost:8501/login")
     
     if not api_key:
         st.error("⚠️ Configuração do Firebase não encontrada. Verifique o arquivo secrets.toml.")

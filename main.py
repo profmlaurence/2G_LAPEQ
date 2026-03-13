@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import streamlit as st
 from utils.bucket_connect import BucketConnector, BucketUtils
+from utils.secrets_helper import get_secret_value
 from utils.utils_datas import handle_existing_dataset
 from config import DATASET_DIR, DEFAULT_DATA
 
@@ -45,9 +46,7 @@ def main():
     """Main application function."""
     try:
         # Carrega configuração do Google Cloud Storage
-        bucket_name = st.secrets.get("gcs", {}).get("storage_bucket")
-        if not bucket_name:
-            bucket_name = os.environ.get("GCS_STORAGE_BUCKET", "lapeq2g")
+        bucket_name = get_secret_value("gcs", "storage_bucket", "GCS_STORAGE_BUCKET", "lapeq2g")
             
         bucket = BucketConnector(bucket_name).connect()
         
