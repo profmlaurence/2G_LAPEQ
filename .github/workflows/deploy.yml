@@ -1,4 +1,4 @@
-name: Deploy to Cloud Run
+name: Build and Deploy to Cloud Run
 
 on:
   push:
@@ -9,21 +9,70 @@ on:
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GCP_REGION: ${{ secrets.GCP_REGION }}
+  AR_REPO: ${{ secrets.AR_REPO }}          # nome do repositório no Artifact Registry
+  IMAGE_NAME: lapeq-app
   CLOUD_RUN_SERVICE: ${{ secrets.CLOUD_RUN_SERVICE }}
   CLOUD_RUN_SERVICE_ACCOUNT: ${{ secrets.CLOUD_RUN_SERVICE_ACCOUNT }}
   STREAMLIT_SECRET_NAME: streamlit-secrets
 
 jobs:
+  # ──────────────────────────────────────────────────────────────
+  # 1. Build: constrói a imagem Docker e faz push ao Artifact Registry
+  #    Usa cache de camadas para acelerar builds subsequentes.
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: Build & Push Docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GCP_REGION }}-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve image tags
+        id: tags
+        run: |
+          BASE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}"
+          echo "versioned=${BASE}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "cache=${BASE}:cache"                 >> "$GITHUB_OUTPUT"
+
+      - name: Build and push (with layer cache)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.tags.outputs.versioned }}
+          cache-from: type=registry,ref=${{ steps.tags.outputs.cache }}
+          cache-to:   type=registry,ref=${{ steps.tags.outputs.cache }},mode=max
+
+    outputs:
+      # digest garante que o deploy usa exatamente a imagem construída acima
+      image: ${{ steps.tags.outputs.versioned }}@${{ steps.build.outputs.digest }}
+
+  # ──────────────────────────────────────────────────────────────
+  # 2. Deploy: atualiza secret no Secret Manager e implanta no Cloud Run
+  # ──────────────────────────────────────────────────────────────
   deploy:
+    name: Update Secret & Deploy
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -36,38 +85,37 @@ jobs:
 
       - name: Ensure Secret Manager secret exists
         run: |
-          if ! gcloud secrets describe "$STREAMLIT_SECRET_NAME" >/dev/null 2>&1; then
+          if ! gcloud secrets describe "$STREAMLIT_SECRET_NAME" \
+               --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
             printf 'placeholder' | gcloud secrets create "$STREAMLIT_SECRET_NAME" \
-              --replication-policy="automatic" \
+              --project "$GCP_PROJECT_ID" \
+              --replication-policy=automatic \
               --data-file=-
           fi
 
-      - name: Update Streamlit secret from GitHub secret
+      - name: Update Streamlit secrets
         env:
           STREAMLIT_SECRETS_TOML: ${{ secrets.STREAMLIT_SECRETS_TOML }}
         run: |
-          if [ -z "$STREAMLIT_SECRETS_TOML" ]; then
-            echo "GitHub secret STREAMLIT_SECRETS_TOML is missing"
-            exit 1
-          fi
+          [ -n "$STREAMLIT_SECRETS_TOML" ] || { echo "STREAMLIT_SECRETS_TOML secret ausente"; exit 1; }
           printf '%s' "$STREAMLIT_SECRETS_TOML" > /tmp/secrets.toml
-          gcloud secrets versions add "$STREAMLIT_SECRET_NAME" --data-file=/tmp/secrets.toml
+          gcloud secrets versions add "$STREAMLIT_SECRET_NAME" \
+            --project "$GCP_PROJECT_ID" \
+            --data-file=/tmp/secrets.toml
           rm -f /tmp/secrets.toml
 
-      - name: Grant runtime access to Secret Manager
+      - name: Grant Cloud Run SA access to Secret Manager
         run: |
-          if [ -z "$CLOUD_RUN_SERVICE_ACCOUNT" ]; then
-            echo "GitHub secret CLOUD_RUN_SERVICE_ACCOUNT is missing"
-            exit 1
-          fi
+          [ -n "$CLOUD_RUN_SERVICE_ACCOUNT" ] || { echo "CLOUD_RUN_SERVICE_ACCOUNT secret ausente"; exit 1; }
           gcloud secrets add-iam-policy-binding "$STREAMLIT_SECRET_NAME" \
+            --project "$GCP_PROJECT_ID" \
             --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" \
             --role="roles/secretmanager.secretAccessor"
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "$CLOUD_RUN_SERVICE" \
-            --source . \
+            --image "${{ needs.build.outputs.image }}" \
             --project "$GCP_PROJECT_ID" \
             --region "$GCP_REGION" \
             --platform managed \
@@ -75,7 +123,7 @@ jobs:
             --service-account "$CLOUD_RUN_SERVICE_ACCOUNT" \
             --update-secrets /root/.streamlit/secrets.toml="$STREAMLIT_SECRET_NAME":latest
 
-      - name: Show deployed URL
+      - name: Show service URL
         run: |
           gcloud run services describe "$CLOUD_RUN_SERVICE" \
             --project "$GCP_PROJECT_ID" \
