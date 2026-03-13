@@ -1,0 +1,83 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  CLOUD_RUN_SERVICE: ${{ secrets.CLOUD_RUN_SERVICE }}
+  CLOUD_RUN_SERVICE_ACCOUNT: ${{ secrets.CLOUD_RUN_SERVICE_ACCOUNT }}
+  STREAMLIT_SECRET_NAME: streamlit-secrets
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Ensure Secret Manager secret exists
+        run: |
+          if ! gcloud secrets describe "$STREAMLIT_SECRET_NAME" >/dev/null 2>&1; then
+            printf 'placeholder' | gcloud secrets create "$STREAMLIT_SECRET_NAME" \
+              --replication-policy="automatic" \
+              --data-file=-
+          fi
+
+      - name: Update Streamlit secret from GitHub secret
+        env:
+          STREAMLIT_SECRETS_TOML: ${{ secrets.STREAMLIT_SECRETS_TOML }}
+        run: |
+          if [ -z "$STREAMLIT_SECRETS_TOML" ]; then
+            echo "GitHub secret STREAMLIT_SECRETS_TOML is missing"
+            exit 1
+          fi
+          printf '%s' "$STREAMLIT_SECRETS_TOML" > /tmp/secrets.toml
+          gcloud secrets versions add "$STREAMLIT_SECRET_NAME" --data-file=/tmp/secrets.toml
+          rm -f /tmp/secrets.toml
+
+      - name: Grant runtime access to Secret Manager
+        run: |
+          if [ -z "$CLOUD_RUN_SERVICE_ACCOUNT" ]; then
+            echo "GitHub secret CLOUD_RUN_SERVICE_ACCOUNT is missing"
+            exit 1
+          fi
+          gcloud secrets add-iam-policy-binding "$STREAMLIT_SECRET_NAME" \
+            --member="serviceAccount:$CLOUD_RUN_SERVICE_ACCOUNT" \
+            --role="roles/secretmanager.secretAccessor"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --source . \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --platform managed \
+            --allow-unauthenticated \
+            --service-account "$CLOUD_RUN_SERVICE_ACCOUNT" \
+            --update-secrets /root/.streamlit/secrets.toml="$STREAMLIT_SECRET_NAME":latest
+
+      - name: Show deployed URL
+        run: |
+          gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --format='value(status.url)'

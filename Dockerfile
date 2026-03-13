@@ -3,6 +3,9 @@ FROM python:3.11-slim
 # Define o diretório de trabalho
 WORKDIR /app
 
+# Garante o diretório onde o Streamlit procura o secrets.toml em runtime
+RUN mkdir -p /root/.streamlit
+
 # Copia o arquivo de requisitos e instala as dependências
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
